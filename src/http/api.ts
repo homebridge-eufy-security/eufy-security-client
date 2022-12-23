@@ -898,17 +898,17 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
 
     public async getAllVideoEvents(filter?: EventFilterType, maxResults?: number): Promise<Array<EventRecordResponse>> {
         const fifteenYearsInMilliseconds = 15 * 365 * 24 * 60 * 60 * 1000;
-        return this.getVideoEvents(new Date(new Date().getTime() - fifthyYearsInMilliseconds), new Date(), filter, maxResults);
+        return this.getVideoEvents(new Date(new Date().getTime() - fifteenYearsInMilliseconds), new Date(), filter, maxResults);
     }
 
     public async getAllAlarmEvents(filter?: EventFilterType, maxResults?: number): Promise<Array<EventRecordResponse>> {
         const fifteenYearsInMilliseconds = 15 * 365 * 24 * 60 * 60 * 1000;
-        return this.getAlarmEvents(new Date(new Date().getTime() - fifthyYearsInMilliseconds), new Date(), filter, maxResults);
+        return this.getAlarmEvents(new Date(new Date().getTime() - fifteenYearsInMilliseconds), new Date(), filter, maxResults);
     }
 
     public async getAllHistoryEvents(filter?: EventFilterType, maxResults?: number): Promise<Array<EventRecordResponse>> {
         const fifteenYearsInMilliseconds = 15 * 365 * 24 * 60 * 60 * 1000;
-        return this.getHistoryEvents(new Date(new Date().getTime() - fifthyYearsInMilliseconds), new Date(), filter, maxResults);
+        return this.getHistoryEvents(new Date(new Date().getTime() - fifteenYearsInMilliseconds), new Date(), filter, maxResults);
     }
 
     public isConnected(): boolean {
