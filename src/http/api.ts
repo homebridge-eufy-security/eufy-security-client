@@ -371,7 +371,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
 
             const response = await this.request({
                 method: "post",
-                endpoint: "v1/sms/send/verify_code",
+                endpoint: "v2/sms/send/verify_code",
                 data: {
                     message_type: type,
                     transaction: `${new Date().getTime()}`
@@ -399,13 +399,16 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "get",
-                    endpoint: "v1/app/trust_device/list"
+                    endpoint: "v2/app/trust_device/list"
                 });
                 if (response.status == 200) {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
-                        if (result.data && result.data.list) {
-                            return result.data.list;
+                        if (result.data) {
+                            const data = this.decryptAPIData(result.data);
+                            if (data.list) {
+                                return data.list;
+                            }
                         }
                     } else {
                         this.log.error("Response code not ok", {code: result.code, msg: result.msg });
@@ -425,7 +428,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/trust_device/add",
+                    endpoint: "v2/app/trust_device/add",
                     data: {
                         verify_code: verifyCode,
                         transaction: `${new Date().getTime()}`
@@ -624,7 +627,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/review/app_push_check",
+                    endpoint: "v2/app/review/app_push_check",
                     data: {
                         app_type: "eufySecurity",
                         transaction: `${new Date().getTime()}`
@@ -654,7 +657,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/apppush/register_push_token",
+                    endpoint: "v2/apppush/register_push_token",
                     data: {
                         is_notification_enable: true,
                         token: token,
@@ -689,7 +692,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/upload_devs_params",
+                    endpoint: "v2/app/upload_devs_params",
                     data: {
                         device_sn: deviceSN,
                         station_sn: stationSN,
@@ -701,7 +704,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                 if (response.status == 200) {
                     const result: ResultResponse = response.data;
                     if (result.code == 0) {
-                        const dataresult = result.data;
+                        const dataresult = this.decryptAPIData(result.data);
                         this.log.debug("New parameters set", {params: tmp_params, response: dataresult });
                         return true;
                     } else {
@@ -722,7 +725,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/cipher/get_ciphers",
+                    endpoint: "v2/app/cipher/get_ciphers",
                     data: {
                         cipher_ids: cipherIDs,
                         user_id: userID,
@@ -733,8 +736,9 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
+                            const encCiphers = this.decryptAPIData(result.data);
                             const ciphers: Ciphers = {};
-                            result.data.forEach((cipher: Cipher) => {
+                            encCiphers.forEach((cipher: Cipher) => {
                                 ciphers[cipher.cipher_id] = cipher;
                             });
                             return ciphers;
@@ -757,14 +761,15 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "get",
-                    endpoint: `v1/voice/response/lists/${deviceSN}`
+                    endpoint: `v2/voice/response/lists/${deviceSN}`
                 });
                 if (response.status == 200) {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
+                            const encVoices = this.decryptAPIData(result.data);
                             const voices: Voices = {};
-                            result.data.forEach((voice: Voice) => {
+                            encVoices.forEach((voice: Voice) => {
                                 voices[voice.voice_id] = voice;
                             });
                             return voices;
@@ -920,7 +925,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/family/get_invites",
+                    endpoint: "v2/family/get_invites",
                     data: {
                         num: 100,
                         orderby: "",
@@ -933,8 +938,9 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
+                            const encInvites = this.decryptAPIData(result.data);
                             const invites: Invites = {};
-                            result.data.forEach((invite: Invite) => {
+                            encInvites.forEach((invite: Invite) => {
                                 invites[invite.invite_id] = invite;
                                 invites[invite.invite_id].devices = JSON.parse((invites[invite.invite_id].devices as unknown) as string);
                             });
@@ -958,7 +964,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/family/confirm_invite",
+                    endpoint: "v2/family/confirm_invite",
                     data: {
                         invites: confirmInvites,
                         transaction: `${new Date().getTime().toString()}`
@@ -990,15 +996,16 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                 } else {
                     const response = await this.request({
                         method: "get",
-                        endpoint: `v1/app/public_key/query?device_sn=${deviceSN}&type=${type}`
+                        endpoint: `v2/app/public_key/query?device_sn=${deviceSN}&type=${type}`
                     });
                     if (response.status == 200) {
                         const result: ResultResponse = response.data;
                         if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                             if (result.data) {
+                                const data = this.decryptAPIData(result.data);
                                 if (type === PublicKeyType.LOCK)
-                                    this.persistentData.device_public_keys[deviceSN] = result.data.public_key;
-                                return result.data.public_key;
+                                    this.persistentData.device_public_keys[deviceSN] = data.public_key;
+                                return data.public_key;
                             }
                         } else {
                             this.log.error("Response code not ok", {code: result.code, msg: result.msg });
@@ -1023,7 +1030,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/get_sensor_history",
+                    endpoint: "v2/app/get_sensor_history",
                     data: {
                         devicse_sn: deviceSN,
                         max_time: 0,  //TODO: Finish implementation
@@ -1037,7 +1044,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
-                            const entries: Array<SensorHistoryEntry> = result.data;
+                            const entries: Array<SensorHistoryEntry> = this.decryptAPIData(result.data);
                             return entries;
                         }
                     } else {
@@ -1058,7 +1065,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/house/detail",
+                    endpoint: "v2/house/detail",
                     data: {
                         house_id: houseID,
                         transaction: `${new Date().getTime().toString()}`
@@ -1068,7 +1075,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
-                            return result.data as HouseDetail;
+                            return this.decryptAPIData(result.data) as HouseDetail;
                         }
                     } else {
                         this.log.error("Response code not ok", {code: result.code, msg: result.msg });
@@ -1088,7 +1095,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/house/list",
+                    endpoint: "v2/house/list",
                     data: {
                         transaction: `${new Date().getTime().toString()}`
                     }
@@ -1097,7 +1104,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
-                            return result.data as Array<HouseListResponse>;
+                            return this.decryptAPIData(result.data) as Array<HouseListResponse>;
                         }
                     } else {
                         this.log.error("Response code not ok", {code: result.code, msg: result.msg });
@@ -1118,7 +1125,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/house/invite_list",
+                    endpoint: "v2/house/invite_list",
                     data: {
                         is_inviter: isInviter,
                         transaction: `${new Date().getTime().toString()}`
@@ -1128,7 +1135,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data) {
-                            return result.data as Array<HouseInviteListResponse>;
+                            return this.decryptAPIData(result.data) as Array<HouseInviteListResponse>;
                         }
                     } else {
                         this.log.error("Response code not ok", {code: result.code, msg: result.msg });
@@ -1148,7 +1155,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/house/confirm_invite",
+                    endpoint: "v2/house/confirm_invite",
                     data: {
                         house_id: houseID,
                         invite_id: inviteID,
@@ -1211,7 +1218,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/device/local_user/add",
+                    endpoint: "v2/app/device/local_user/add",
                     data: {
                         device_sn: deviceSN,
                         nick_name: nickname,
@@ -1223,7 +1230,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                     const result: ResultResponse = response.data;
                     if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                         if (result.data)
-                            return result.data as AddUserResponse;
+                            return this.decryptAPIData(result.data) as AddUserResponse;
                     } else {
                         this.log.error("Response code not ok", {code: result.code, msg: result.msg });
                     }
@@ -1242,7 +1249,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
             try {
                 const response = await this.request({
                     method: "post",
-                    endpoint: "v1/app/device/user/delete",
+                    endpoint: "v2/app/device/user/delete",
                     data: {
                         device_sn: deviceSN,
                         short_user_ids: [shortUserId],
@@ -1271,13 +1278,13 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
         try {
             const response = await this.request({
                 method: "get",
-                endpoint: `v1/app/device/user/list?device_sn=${deviceSN}&station_sn=${stationSN}`
+                endpoint: `v2/app/device/user/list?device_sn=${deviceSN}&station_sn=${stationSN}`
             });
             if (response.status == 200) {
                 const result: ResultResponse = response.data;
                 if (result.code == ResponseErrorCode.CODE_WHATEVER_ERROR) {
                     if (result.data) {
-                        const usersResponse = result.data as UsersResponse;
+                        const usersResponse = this.decryptAPIData(result.data) as UsersResponse;
                         return usersResponse.user_list;
                     }
                 } else {
@@ -1315,7 +1322,7 @@ export class HTTPApi extends TypedEmitter<HTTPApiEvents> {
                 if (user !== null) {
                     const response = await this.request({
                         method: "post",
-                        endpoint: "v1/app/device/local_user/update",
+                        endpoint: "v2/app/device/local_user/update",
                         data: {
                             device_sn: deviceSN,
                             nick_name: nickname,
